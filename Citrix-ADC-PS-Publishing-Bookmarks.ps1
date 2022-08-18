@@ -1,37 +1,46 @@
+#---------------------------------------------------------------------
+# Citrix-ADC-PS-Publishing-Bookmarks
+#
+# Version      Date        Info
+# 1.0.0        2021        Initial Version
+#
+# Made by Eldar Akhmetov Copyleft (c) 2021
+#---------------------------------------------------------------------
+
 $Credential = Get-Credential -Message "Enter your username and password to log in to Citrix Netscaler!"
 
 Import-Module ".\PS-NITRO-master\NitroConfigurationFunctions\NITROConfigurationFunctions.psm1" -Force
 
-#Масси DNS имен Netscaler для публикации
+#Массив DNS имен Netscaler для публикации
 [String[]]$NSNameArr = "ns-01.test.com", "ns-02.test.com"
 
 # Имя сервера на NS для проверки доступности по RDP
 $NSServerRDPcheck = "Nitro_server"
 
-# Имя севиса на NS для проверки доступности по RDP
+# Имя сервиса на NS для проверки доступности по RDP
 $NSServiceRDPcheck = "LB_SVC_rdp_nitro"
 
-#Файл со списком серверов для создания групп и публикации на rdplocal
+# Файл со списком серверов для создания групп и публикации на rdplocal
 [String[]]$computersArr = Get-Content -Path ".\servers.txt"
 
-#OU в которой будет создана группа AD
+# OU в которой будет создана группа AD
 $OUPath = "OU=TestGroups,DC=Test,DC=com"
 
-#Шаблон для имени группы в AD, подставляется перед именем сервера
+# Шаблон для имени группы в AD, подставляется перед именем сервера
 [String]$groupNameAhead = "Test-RDP-"
 
-#Шаблон для описания группы в AD
+# Шаблон для описания группы в AD
 $DescriptionAhead = "rdp bookmark | "
 
 $authzPolicyNameAhead = "Authz_pol_"
 
 $DateStr = (Get-Date).ToString("dd.MM.yyyy")
 
-#Путь для файла логов
+# Путь для файла логов
 $logFilePath = ".\NSNitroLogs\" + $DateStr + "_logNSNitro.log"
 
-#Получаем имя DC с ролью PDCEmulator для многодоменной инфраструктуры, запрос на создание группы AD будем отправлять на него,
-#если введен домен, то запрос на получение PDC из этого домена
+# Получаем имя DC с ролью PDCEmulator для многодоменной инфраструктуры, запрос на создание группы AD будем отправлять на него,
+# если введен домен, то запрос на получение PDC из этого домена
 
 if ($Credential.UserName -match "(\w+)\\") {
     $DC = Get-ADDomain $Matches[1] -Credential $Credential | Select-Object -ExpandProperty PDCEmulator
@@ -40,7 +49,7 @@ else {
     $DC = Get-ADDomain -Credential $Credential | Select-Object -ExpandProperty PDCEmulator
 }
 
-#Функция записи лога в CSV файл
+# Функция записи лога в CSV файл
 function WriteLogs {
     [CmdletBinding()]
     Param(
@@ -54,7 +63,7 @@ function WriteLogs {
     $logString | Out-File $logFilePath -Encoding utf8 -Append
 }
 
-#Функция создания сессии на NS
+# Функция создания сессии на NS
 function New-NSSession {
     [CmdletBinding()]
     param (
@@ -87,7 +96,7 @@ function New-NSSession {
     }
 }
 
-#Функция проверки является ли текущий NS Primary в HA
+# Функция проверки является ли текущий NS Primary в HA
 function Get-NSHAPrimary {
     param (
         [Parameter(Mandatory = $true)]
@@ -117,7 +126,7 @@ function Get-NSHAPrimary {
     }
 }
 
-#Функция создания группы в AD, в параметрах принимает имя группы AD, имя сервера, OU группы
+# Функция создания группы в AD, в параметрах принимает имя группы AD, имя сервера, OU группы
 function New-GroupAD {
     [CmdletBinding()]
     Param(
@@ -153,7 +162,7 @@ function New-GroupAD {
 }
 
 
-#Функция добаления группы на netscaler, в параметрах принимает имя группы и сессию c NS
+# Функция добаления группы на netscaler, в параметрах принимает имя группы и сессию c NS
 function Add-NSgroup {
     [CmdletBinding()]
     Param(
@@ -179,7 +188,7 @@ function Add-NSgroup {
 }
 
 
-#Функция добалвения Bookmark-а на netscaler, в параметрах принимает имя сервера и сессию с NS
+# Функция добалвения Bookmark-а на netscaler, в параметрах принимает имя сервера и сессию с NS
 function Add-NSBookmark {
     [CmdletBinding()]
     Param(
@@ -210,7 +219,7 @@ function Add-NSBookmark {
 }
 
 
-#Функция добавление Authorization Policy на netscaler, в параметрах принимает имя политики и сессию с NS
+# Функция добавление Authorization Policy на netscaler, в параметрах принимает имя политики и сессию с NS
 function Add-NSAuthzPolicy {
     [CmdletBinding()]
     Param(
@@ -244,7 +253,7 @@ function Add-NSAuthzPolicy {
 }
 
 
-#Функция биндинга Bookmark-а к группе, в параметрах принимает имя сервера, имя группы и сессию с NS
+# Функция биндинга Bookmark-а к группе, в параметрах принимает имя сервера, имя группы и сессию с NS
 function Add-NSBindingBookmark {
     [CmdletBinding()]
     Param(
@@ -276,7 +285,7 @@ function Add-NSBindingBookmark {
 }
 
 
-#Функция биндинга Authorization Policy к группе, в параметрах принимает имя политики, имя группы и сессию с NS
+# Функция биндинга Authorization Policy к группе, в параметрах принимает имя политики, имя группы и сессию с NS
 function Add-NSBindingAuthzPolicy {
     [CmdletBinding()]
     Param(
@@ -309,7 +318,7 @@ function Add-NSBindingAuthzPolicy {
 }
 
 
-#Функция проверки наличия группы в AD, в параметрах принимает имя группы AD 
+# Функция проверки наличия группы в AD, в параметрах принимает имя группы AD 
 function Get-GroupADExists {
     [CmdletBinding()]
     Param(
@@ -343,7 +352,7 @@ function Get-GroupADExists {
 }
 
 
-#Функция проверки на наличие группы на netscaler, в параметрах принимает имя группы AD и сессию с NS
+# Функция проверки на наличие группы на netscaler, в параметрах принимает имя группы AD и сессию с NS
 function Get-NSGroupExists {
     [CmdletBinding()]
     Param(
@@ -374,7 +383,7 @@ function Get-NSGroupExists {
 
 }
 
-#Функция проверки на наличие Bookmark на netscaler, в параметрах принимает имя сервера и сессию с NS
+# Функция проверки на наличие Bookmark на netscaler, в параметрах принимает имя сервера и сессию с NS
 function Get-NSBookmarkExists {
     [CmdletBinding()]
     Param(
@@ -406,7 +415,7 @@ function Get-NSBookmarkExists {
 }
 
 
-#Функция проверки на биндинг Bookmark к группе на netscaler, в параметрах принимает имя сервера, имя группы и сессию с NS
+# Функция проверки на биндинг Bookmark к группе на netscaler, в параметрах принимает имя сервера, имя группы и сессию с NS
 function Get-NSBookmarkBinding {
     [CmdletBinding()]
     Param(
@@ -446,7 +455,7 @@ function Get-NSBookmarkBinding {
 }
 
 
-#Функция проверка на наличие Authorization Policy на NS, в параметрах принимает имя политики и сессию с NS
+# Функция проверка на наличие Authorization Policy на NS, в параметрах принимает имя политики и сессию с NS
 function Get-NSAuthzPolicyExists {
     [CmdletBinding()]
     Param(
@@ -480,7 +489,7 @@ function Get-NSAuthzPolicyExists {
 
 }
 
-#Функция проверка на биндинг Authorization Policy к группе на NS, в параметрах принимает имя политики, имя группы и сессию с NS
+# Функция проверка на биндинг Authorization Policy к группе на NS, в параметрах принимает имя политики, имя группы и сессию с NS
 function Get-NSAuthzPolicyBinding {
     [CmdletBinding()]
     Param(
@@ -520,7 +529,7 @@ function Get-NSAuthzPolicyBinding {
 
 }
 
-#Функция проверки есть ли сервер на NS
+# Функция проверки есть ли сервер на NS
 function Get-NSServerExists {
     [CmdletBinding()]
     param (
@@ -552,7 +561,7 @@ function Get-NSServerExists {
     }
 }
 
-#Функция проверки есть ли сервис на NS
+# Функция проверки есть ли сервис на NS
 function Get-NSServiceExists {
     [CmdletBinding()]
     param (
@@ -580,7 +589,7 @@ function Get-NSServiceExists {
     }
 }
 
-#Функция проверки доступа с NS до конечного компьютера по порту 3389
+# Функция проверки доступа с NS до конечного компьютера по порту 3389
 function Get-NSRDPAccessCheck {
     [CmdletBinding()]
     param (
@@ -696,7 +705,7 @@ function Get-NSServer {
     }
 }
 
-#Функция проверки на наличие записи DNS для сервера, в параметрах принимает имя сервера
+# Функция проверки на наличие записи DNS для сервера, в параметрах принимает имя сервера
 function Get-DNSRecordExists {
     [CmdletBinding()]
     Param(
@@ -723,7 +732,7 @@ function Get-DNSRecordExists {
     }
 }
 
-#Функция получения IP адреса, в параметрах принимает DNS имя компьютера
+# Функция получения IP адреса, в параметрах принимает DNS имя компьютера
 function Get-ComputerIPv4Addres {
     [CmdletBinding()]
     param (
@@ -749,47 +758,47 @@ function Get-ComputerIPv4Addres {
 }
 
 foreach ($NSName in $NSNameArr) {
-    #Создаем сессию с Citrix Netscaler
+    # Создаем сессию с Citrix Netscaler
     $Session = New-NSSession -NSName $NsName -Credential $Credential
     $NSNameEndpoint = $Session.Endpoint
     if (($null -ne $Session) -and (Get-NSHAPrimary -NSSession $Session -Verbose)) {
 
-        #Циклом получаем имя компьютера из массива имен
+        # Циклом получаем имя компьютера из массива имен
         foreach ($computerName in $computersArr) {
             $computerName = ($computerName.ToLower()).Trim()
-            #В переменную $groupNameFinal помещаем имя группы AD, соеденив шаблон имени и имя компьютера
+            # В переменную $groupNameFinal помещаем имя группы AD, соеденив шаблон имени и имя компьютера
             $groupNameFinal = $groupNameAhead + $computerName
-            #В переменную $authzPolicyName помещаем имя политики авторизации, соеденив шаблон имени и имя компьютера
+            # В переменную $authzPolicyName помещаем имя политики авторизации, соеденив шаблон имени и имя компьютера
             $authzPolicyName = $authzPolicyNameAhead + $computerName
     
-            #Проверяем есть ли DNS запись для компьютера и группа в AD, если нет группы, то создаем
+            # Проверяем есть ли DNS запись для компьютера и группа в AD, если нет группы, то создаем
             if ((Get-DNSRecordExists -computerName $computerName -Verbose) -and (!(Get-GroupADExists -groupNameAD $groupNameFinal -Credential $Credential -DCName $DC -Verbose))) {        
                 New-GroupAD -groupNameAD $groupNameFinal -computerName $computerName -destinationionPath $OUPath -Credential $Credential -DCName $DC -Verbose
             }
 
-            #Проверяем есть ли DNS запись для компьютера и есть ли в AD группа для добалвения на NS
+            # Проверяем есть ли DNS запись для компьютера и есть ли в AD группа для добалвения на NS
             if ((Get-DNSRecordExists -computerName $computerName) -and (Get-GroupADExists -groupNameAD $groupNameFinal -Credential $Credential -DCName $DC)) {
-                #Проверяем добавлена ли группа на NS, если нет, то добавляем
+                # Проверяем добавлена ли группа на NS, если нет, то добавляем
                 if (!(Get-NSGroupExists -groupName $groupNameFinal -NSSession $Session -Verbose)) {
                     Add-NSgroup -groupName $groupNameFinal -NSSession $Session -Verbose
                 }
 
-                #Проверяем добавлен ли Bookmark на NS, если нет, то добавляем
+                # Проверяем добавлен ли Bookmark на NS, если нет, то добавляем
                 if (!(Get-NSBookmarkExists -bookmarkName $computerName -NSSession $Session -Verbose)) {
                     Add-NSBookmark -bookmarkName $computerName -NSSession $Session -Verbose
                 }
 
-                #Проверка на биндинг Bookmark-а к группе на NS, если нет, то выполняем биндинг
+                # Проверка на биндинг Bookmark-а к группе на NS, если нет, то выполняем биндинг
                 if (Get-NSBookmarkBinding -bookmarkName $computerName -groupName $groupNameFinal -NSSession $Session -Verbose) {
                     Add-NSBindingBookmark -bookmarkName $computerName -groupName $groupNameFinal -NSSession $Session -Verbose
                 }
 
-                #Проверяем есть ли на NS Authorization Policy, если нет, то создаем
+                # Проверяем есть ли на NS Authorization Policy, если нет, то создаем
                 if (!(Get-NSAuthzPolicyExists -authzPolicyName $authzPolicyName -NSSession $Session -Verbose)) {
                     Add-NSAuthzPolicy -authzPolicyName $authzPolicyName -computerName $computerName -NSSession $Session -Verbose
                 }
 
-                #Проверка на биндинг Authorization Policy к группе на NS, если нет, то выполняем биндинг
+                # Проверка на биндинг Authorization Policy к группе на NS, если нет, то выполняем биндинг
                 if (Get-NSAuthzPolicyBinding -authzPolicyName $authzPolicyName -groupName $groupNameFinal -NSSession $Session -Verbose) {
                     Add-NSBindingAuthzPolicy -authzPolicyName $authzPolicyName -groupName $groupNameFinal -NSSession $Session -Verbose
                 }
@@ -804,7 +813,7 @@ foreach ($NSName in $NSNameArr) {
 
         }
 
-        #Сохраняем config
+        # Сохраняем config
         try {
             Save-NSConfig -NSSession $Session
             Write-Verbose "$NSNameEndpoint NS config saved successfully" -Verbose
